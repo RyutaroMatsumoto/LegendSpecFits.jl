@@ -29,6 +29,9 @@ function simple_calibration(e_uncal::Vector{<:Real}, gamma_lines::Vector{<:Unitf
     elseif calib_type == :gamma
          @debug "Use generic simple calibration for gamma lines"
         return simple_calibration_gamma(e_uncal, gamma_lines, window_sizes,; peaksearch_type = :most_prominent, kwargs...)
+    elseif calib_type == :co60
+        @debug "Use generic simple calibration for co60 lines"
+        return simple_calibration_gamma(e_uncal, gamma_lines, window_sizes,; peaksearch_type = :co60, kwargs...)
     else
         error("Calibration type not supported")
     end
@@ -64,6 +67,9 @@ function simple_calibration_gamma(e_uncal::Vector{<:Real}, gamma_lines::Vector{<
     if peaksearch_type == :most_prominent
          # find most prominent peak
         result_peak = peak_search_gamma(e_uncal, gamma_lines; kwargs...)
+    elseif peaksearch_type == :co60
+        @debug "Use Co60a(1173keV) with ecal_config-based parameters"
+        result_peak = peak_search_gamma(e_uncal, [gamma_lines[1]]; kwargs...) # parameters from ecal_config
     elseif peaksearch_type == :th228
         @debug "Use Th228 full-energy peak (FEP) and fixed peakfinder and binning parameters"
         kwargs = merge((peakfinder_σ = 5.0, peakfinder_threshold = 10.0, peak_quantile = 0.9..1.0, bin_quantile = 0.05..0.5), NamedTuple(kwargs)) # give good default values for Th228
@@ -138,22 +144,22 @@ function peak_search_gamma(e_uncal::Vector{<:Real}, gamma_lines::Vector{<:Unitfu
         quantile(e_uncal, quantile_perc), length(gamma_lines)
     end
 
-    # 1) sort by ADC x value (accending)                 
-    sorted_peakpos     = peakpos[sortperm(peakpos)]           
-    sorted_cts_peakpos = cts_peakpos[sortperm(peakpos)]       
+    # # 1) sort by ADC x value (accending)                 
+    # sorted_peakpos     = peakpos[sortperm(peakpos)]           
+    # sorted_cts_peakpos = cts_peakpos[sortperm(peakpos)]       
 
-    # 2) log
-    @info "=== Sorted detected peaks by ADC value ==="
-    for i in eachindex(sorted_peakpos)
-        @info "  Sorted Peak #$i: ADC=$(sorted_peakpos[i]), counts=$(sorted_cts_peakpos[i])"
-    end
+    # # 2) log
+    # @info "=== Sorted detected peaks by ADC value ==="
+    # for i in eachindex(sorted_peakpos)
+    #     @info "  Sorted Peak #$i: ADC=$(sorted_peakpos[i]), counts=$(sorted_cts_peakpos[i])"
+    # end
 
-    # 3) peak used for calibration =  sorted index 1 
-    peak_guess = sorted_peakpos[1]   
-    peak_idx   = 1                   
+    # # 3) peak used for calibration =  sorted index 1 
+    # peak_guess = sorted_peakpos[1]   
+    # peak_idx   = 1                   
 
-    @info "Using Lowest ADC Peak for calibration: ADC=$(peak_guess)"
-    @info "peak_idx => $(gamma_lines[peak_idx])"
+    # @info "Using Lowest ADC Peak for calibration: ADC=$(peak_guess)"
+    # @info "peak_idx => $(gamma_lines[peak_idx])"
 
     c = gamma_lines[peak_idx] / peak_guess
 
